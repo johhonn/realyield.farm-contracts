@@ -2,16 +2,26 @@ pragma solidity ^0.6.12;
 import "./PoolHandler.sol";
 import "./Interfaces/IERC20.sol";
 import "./Pool.sol";
-//import "./CropToken.sol";
+import "./yieldToken.sol";
 contract Game is PoolHandler{
     uint gameinterval;
     uint first_game;
-    uint[] defaultAllocation=[10,10];
-    uint[] defaultLimits=[50,100];
+    uint[] defaultAllocation;
+    uint[] defaultLimits;
     uint defaultDeposit;
     address farmLocation;
     address DAI=address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
     mapping(address=>uint) gamePoolDeposits;
+
+
+    constructor(uint[] memory _allocation,uint[] memory _limits,uint _deposit, address _token,uint _gameinterval,uint _first_game) public{
+        defaultAllocation=_allocation;
+        defaultLimits=_limits;
+        defaultDeposit=_deposit;
+        farmLocation=_token;
+        gameinterval=_gameinterval;
+        first_game=_first_game;
+    }
     function getNextGame() public view returns(uint){
         return first_game+(((now-first_game)/gameinterval)+1)*gameinterval;
     }
@@ -36,7 +46,7 @@ contract Game is PoolHandler{
     }
 
     function withdrawInterest(uint game, uint[] memory Crops,uint[] memory balances) external returns(bool){
-        //CropToken(farmLocation).burn(msg.sender, Crops, balances);
+        yieldToken(farmLocation).burn(msg.sender, Crops, balances);
         (uint[] memory interestAllocations,
          uint[] memory totalTokens,
          uint depositValue,
@@ -52,9 +62,10 @@ contract Game is PoolHandler{
         uint location=crop%100000;
         return((interest*userBalance)/(interestAllocations[location]*totalTokens[location]));
     }
-    function initializeNextGame() public {
+    function initializeNextGame() public returns(address) {
         uint next=getNextGame();
-        createPool(defaultAllocation,defaultLimits,defaultDeposit,next,next,gameinterval);
+        return createPool(defaultAllocation,defaultLimits,defaultDeposit,next,next,gameinterval);
+        
     }
 
 }
