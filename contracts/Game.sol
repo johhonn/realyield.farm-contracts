@@ -3,16 +3,20 @@ import "./PoolHandler.sol";
 import "./Interfaces/IERC20.sol";
 import "./Pool.sol";
 import "./yieldToken.sol";
+//import "@nomiclabs/buidler/console.sol";
+import '@openzeppelin/contracts/access/Ownable.sol';
 contract Game is PoolHandler{
-    uint gameinterval;
-    uint first_game;
+    uint public gameinterval;
+    uint public first_game;
     uint[] defaultAllocation;
     uint[] defaultLimits;
     uint defaultDeposit;
-    address farmLocation;
-    address DAI=address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
-    mapping(address=>uint) gamePoolDeposits;
-
+    address public farmLocation;
+    address DAI=address(0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD);
+    mapping(address=>mapping(uint=>uint)) gamePoolDeposits;
+    mapping(address=>mapping(uint=>uint)) gamePoolPoints;
+    uint public PointWeight=1000;
+    uint tokenDecimals=10**18;
 
     constructor(uint[] memory _allocation,uint[] memory _limits,uint _deposit, address _token,uint _gameinterval,uint _first_game) public{
         defaultAllocation=_allocation;
@@ -23,6 +27,7 @@ contract Game is PoolHandler{
         first_game=_first_game;
     }
     function getNextGame() public view returns(uint){
+        //console.log(now);
         return first_game+(((now-first_game)/gameinterval)+1)*gameinterval;
     }
 
@@ -33,16 +38,17 @@ contract Game is PoolHandler{
            gamePool = initializeNextGame();
        }
        IERC20(DAI).transferFrom(msg.sender,gamePool,defaultDeposit);
-       Pool(gamePool).deposit(defaultDeposit, '',msg.sender);
-       gamePoolDeposits[gamePool]=defaultDeposit;
+       Pool(gamePool).deposit(defaultDeposit,msg.sender);
+       gamePoolDeposits[msg.sender][game]=defaultDeposit;
+       gamePoolPoints[msg.sender][game]=100*PointWeight;
     }
 
 
     function withdrawStake(uint game) external{
-        require(gamePoolDeposits[msg.sender]>0,"pool is zero");
+        require(gamePoolDeposits[msg.sender][game]>0,"pool is zero");
         address gamePool = getLendingPoolAddress(game);
         Pool(gamePool).transferDepositToUser(msg.sender);
-        gamePoolDeposits[gamePool]=0;
+        gamePoolDeposits[msg.sender][game]=0;
     }
 
     function withdrawInterest(uint game, uint[] memory Crops,uint[] memory balances) external returns(bool){
@@ -60,12 +66,14 @@ contract Game is PoolHandler{
     }
     function getYield(uint crop,uint interest,uint[] memory interestAllocations,uint[] memory totalTokens,uint userBalance) public view returns (uint){
         uint location=crop%100000;
-        return((interest*userBalance)/(interestAllocations[location]*totalTokens[location]));
+        return((interest*userBalance*10**16)/(numeratorFromTokenPercent(interestAllocations[location])*totalTokens[location]));
     }
     function initializeNextGame() public returns(address) {
         uint next=getNextGame();
         return createPool(defaultAllocation,defaultLimits,defaultDeposit,next,next,gameinterval);
         
     }
-
+    function numeratorFromTokenPercent(uint percent) public view returns(uint){
+        return tokenDecimals/percent;
+    }
 }
