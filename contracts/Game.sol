@@ -2,10 +2,13 @@ pragma solidity ^0.6.12;
 import "./PoolHandler.sol";
 import "./Interfaces/IERC20.sol";
 import "./Pool.sol";
+import "./Board.sol";
 import "./yieldToken.sol";
+import "./ERC1155Receiver.sol";
 //import "@nomiclabs/buidler/console.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
-contract Game is PoolHandler{
+//import '@openzeppelin/contracts/roles/MinterRole.sol';
+contract Game is PoolHandler,Board,Ownable{
     uint public gameinterval;
     uint public first_game;
     uint[] defaultAllocation;
@@ -13,12 +16,15 @@ contract Game is PoolHandler{
     uint defaultDeposit;
     address public farmLocation;
     address DAI=address(0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD);
-    mapping(address=>mapping(uint=>uint)) gamePoolDeposits;
-    mapping(address=>mapping(uint=>uint)) gamePoolPoints;
+    mapping(address=>mapping(uint=>uint)) public gamePoolDeposits;
+    mapping(address=>mapping(uint=>uint)) public gamePoolPoints;
+    mapping(address=>mapping(uint=>uint)) public gameOwnedPlots;
     uint public PointWeight=1000;
     uint tokenDecimals=10**18;
-
-    constructor(uint[] memory _allocation,uint[] memory _limits,uint _deposit, address _token,uint _gameinterval,uint _first_game) public{
+    
+    constructor(uint[] memory _allocation,uint[] memory _limits,uint _deposit, address _token,uint _gameinterval,uint _first_game,
+    uint[] memory _seedSoilAffinities,uint[] memory _seedSproutAffinity,uint[] memory _seedSunlightAffinities, uint[] memory _seedPrices) 
+    Board(_seedSoilAffinities,_seedSproutAffinity,_seedSunlightAffinities,_seedPrices) public{
         defaultAllocation=_allocation;
         defaultLimits=_limits;
         defaultDeposit=_deposit;
@@ -26,11 +32,42 @@ contract Game is PoolHandler{
         gameinterval=_gameinterval;
         first_game=_first_game;
     }
+
+    modifier canPlant(address p,uint game){
+        address gamePool=getLendingPoolAddress(game);
+        require(gamePoolDeposits[p][game]>0,"no deposit");
+        require(now>Pool(gamePool).lockstart()&&now<Pool(gamePool).lockstart()+Pool(gamePool).lockduration(),"Invalid Time Period");
+        _;
+    }
+    function getSeedCost(uint[] memory _seeds,uint[] memory _amounts) public view returns(uint){
+        uint cost=0;
+        for(uint i=0;i<_seeds.length;i++){
+            cost+=seedPrices[_seeds[i]]*_amounts[i];
+        }
+        return cost;
+    }
+    function plantSeeds(uint game,uint[] memory seedTypes,uint[] memory seedQuants) public canPlant(msg.sender,game) {
+        uint cost= getSeedCost(seedTypes,seedQuants);gamePoolPoints[msg.sender][game];
+        require(gamePoolPoints[msg.sender][game]>cost);
+        gamePoolPoints[msg.sender][game]=gamePoolPoints[msg.sender][game]-cost;
+        uint plot=gameOwnedPlots[msg.sender][game];
+        require(plot+1>1,"user owns no plot") ;
+        _plantSeeds(plot,game,seedQuants,seedTypes);
+    }
+    
     function getNextGame() public view returns(uint){
         //console.log(now);
         return first_game+(((now-first_game)/gameinterval)+1)*gameinterval;
     }
-
+    function mintCropTokens(uint game,uint[] memory types,uint[] memory _amounts,address _to) public onlyOwner(){
+         uint[] memory formatTokens=generatePoolTokenIDs(types,game);
+         yieldToken(farmLocation).batchmint(_to, formatTokens, _amounts,'');
+    }
+    function getYield(uint game) public{
+        uint plot=gameOwnedPlots[msg.sender][game];
+        (uint[] memory seeds,uint[] memory amounts)=getAllPlotPlantedSeeds(game ,plot);
+        mintCropTokens(game,seeds,amounts,msg.sender);
+    }
     function depositToNextGame() external {
        uint game=getNextGame();
        address gamePool=getLendingPoolAddress(game);
@@ -41,6 +78,7 @@ contract Game is PoolHandler{
        Pool(gamePool).deposit(defaultDeposit,msg.sender);
        gamePoolDeposits[msg.sender][game]=defaultDeposit;
        gamePoolPoints[msg.sender][game]=100*PointWeight;
+       gameOwnedPlots[msg.sender][game]=Pool(gamePool).totalDeposits();
     }
 
 
@@ -52,6 +90,7 @@ contract Game is PoolHandler{
     }
 
     function withdrawInterest(uint game, uint[] memory Crops,uint[] memory balances) external returns(bool){
+        yieldToken(farmLocation).safeBatchTransferFrom(msg.sender, address(this),Crops,balances, "");
         yieldToken(farmLocation).burn(msg.sender, Crops, balances);
         (uint[] memory interestAllocations,
          uint[] memory totalTokens,

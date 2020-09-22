@@ -4,11 +4,11 @@ import "./Interfaces/ILendingPoolAddressesProvider.sol";
 import "./Interfaces/ILendingPool.sol";
 import "./Interfaces/IERC20.sol";
 contract Pool {
-    uint depositAmount;
-    uint lockstart;
-    uint lockduration;
+    uint public depositAmount;
+    uint public lockstart;
+    uint public lockduration;
     uint public interest;
-    address creator;
+    address public creator;
     address atoken=address(0xD483B49F2d55D2c53D32bE6efF735cB001880F79);
     uint public totalDeposits;
     bool finished=false;
