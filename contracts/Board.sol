@@ -37,6 +37,9 @@ contract Board{
 
     function _plantSeeds(uint _plot,uint game,uint[] memory amounts,uint[] memory seeds) internal{
         plot storage p = farms[game][_plot];
+        if(p.soil==0){
+            setPlotProperties(game, _plot);
+        }
         for(uint i=0;i<seeds.length;i++){
             p.PlantedSeeds[seeds[i]]=amounts[i];
         }
@@ -57,7 +60,7 @@ contract Board{
     }
     function getSeedGrowthResult(uint seed,uint _plot,uint quantity,uint game) public view returns(uint){
         uint score =calculateSeedScore(seed,_plot,game);
-        uint growth= getGrownRatio(seed,getRandom(),score);
+        uint growth= getGrownRatio(seed,getLatestRandom(),score);
         return ((quantity*growth*decimals)/(20000*decimals));
     }
 
@@ -77,10 +80,22 @@ contract Board{
         }
 
     }
-    function getRandom()  public view  returns(uint){
-        return now;
+    function getLatestRandom()  public view  returns(uint){
+        return getRandom(now);
     }
-
+    function getRandom(uint seed) public view returns(uint256){
+     return uint256(
+            keccak256(abi.encodePacked(block.difficulty, now,seed))
+        );
+    }
+    function setPlotProperties(uint _game,uint _plot) internal{
+        uint r=getRandom(_game*_plot);
+        plot storage p=farms[_game][_plot];
+        p.soil=1000+(r%5000);
+        p.sunlight=1000+((r%5000)**2)%5000;
+        p.temperature=1000+((r%5000)**3)%5000;
+        p.security=1000+((r%5000)**4)%5000;
+    }
     function absDiff(uint a,uint b) public pure returns(uint Difference){
         if(a>b){
         Difference= (a-b);
