@@ -71,6 +71,10 @@ contract Game is PoolHandler,Board,Ownable,ERC1155Receiver{
         //console.log(now);
         return first_game+(((now-first_game)/gameinterval)+1)*gameinterval;
     }
+     function getGameAtInterval(uint i) public view returns(uint){
+       
+        return first_game+(((now-first_game)/gameinterval)+i)*gameinterval;
+    }
     function mintCropTokens(uint game,uint[] memory types,uint[] memory _amounts,address _to) internal{
          uint[] memory formatTokens=generatePoolTokenIDs(types,game);
          for(uint i=0;i<types.length;i++){

@@ -50,13 +50,8 @@ contract reocurringRandom is ChainlinkClient, Ownable {
         VRFrandom(RVF).getRandom(lotteryId);
         start_new_lottery(interval);
     }
-function cancelRequests() public  onlyOwner(){
-     state = RSTATE.CLOSED;
-    
-
-}
-
-  
-
+    function cancelRequests() public  onlyOwner(){
+        state = RSTATE.CLOSED;  
+    }
     
 }
