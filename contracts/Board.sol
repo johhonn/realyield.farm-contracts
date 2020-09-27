@@ -64,17 +64,23 @@ contract Board{
         return ((quantity*growth*decimals)/(20000*decimals));
     }
 
-    function getAllPlotPlantedSeeds(uint game ,uint _plot) public view returns(uint[] memory seedlist,uint[] memory seedAmounts){
+  function getAllPlotPlantedSeeds(uint game ,uint _plot) public view returns(uint[] memory ,uint[] memory ){
         plot storage pp=farms[game][_plot];
+        uint[] memory seedlist= new uint[](totalSeedTypes);
+        uint[] memory seedAmounts= new uint[](totalSeedTypes);
         for(uint i=0;i<totalSeedTypes;i++){
             if(pp.PlantedSeeds[i]>0){
+                console.log(i);
+                console.log(pp.PlantedSeeds[i]);
                 seedlist[i]=i;
                 seedAmounts[i]=pp.PlantedSeeds[i];
             }
         }
+        return(seedlist,seedAmounts);
     }
 
-    function getTotalScore(uint plot,uint[] memory amounts,uint[] memory seeds,uint _game) public view returns(uint[] memory seedYield){
+    function getTotalScore(uint plot,uint[] memory amounts,uint[] memory seeds,uint _game) public view returns(uint[] memory ){
+        uint[] memory seedYield= new uint[](totalSeedTypes);
         for(uint i=0;i<seeds.length;i++){
             seedYield[i]=getSeedGrowthResult(seeds[i],plot,amounts[i],_game);
         }
