@@ -1,13 +1,15 @@
 pragma solidity ^0.6.12;
 import "./PoolHandler.sol";
 import "./Interfaces/IERC20.sol";
+import "./Interfaces/VRFrandom.sol";
 import "./Pool.sol";
 import "./Board.sol";
 import "./yieldToken.sol";
 import "./ERC1155Receiver.sol";
+
 //import "@nomiclabs/buidler/console.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
-//import '@openzeppelin/contracts/roles/MinterRole.sol';
+
 contract Game is PoolHandler,Board,Ownable,ERC1155Receiver{
     uint public gameinterval;
     uint public first_game;
@@ -15,12 +17,13 @@ contract Game is PoolHandler,Board,Ownable,ERC1155Receiver{
     uint[] defaultLimits;
     uint defaultDeposit;
     address public farmLocation;
-    address VRFrandom;
+    address random;
     address DAI=address(0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD);
     mapping(address=>mapping(uint=>uint)) public gamePoolDeposits;
     mapping(address=>mapping(uint=>uint)) public gamePoolPoints;
     mapping(address=>mapping(uint=>uint)) public gameOwnedPlots;
     mapping(address=>mapping(uint=>bool)) public userHarvested;
+    mapping(uint=>mapping(uint=>uint)) public cropsMinted;
     mapping(uint=>bool) public yieldRandomSet;
     uint public PointWeight=10000;
     uint tokenDecimals=10**18;
@@ -70,6 +73,9 @@ contract Game is PoolHandler,Board,Ownable,ERC1155Receiver{
     }
     function mintCropTokens(uint game,uint[] memory types,uint[] memory _amounts,address _to) internal{
          uint[] memory formatTokens=generatePoolTokenIDs(types,game);
+         for(uint i=0;i<types.length;i++){
+             cropsMinted[game][types[i]]+=_amounts[i];
+         }
          yieldToken(farmLocation).batchmint(_to, formatTokens, _amounts,'');
     }
     function getYield(uint game) public{
@@ -77,20 +83,32 @@ contract Game is PoolHandler,Board,Ownable,ERC1155Receiver{
         (uint[] memory seeds,uint[] memory amounts)=getAllPlotPlantedSeeds(game ,plot);
         mintCropTokens(game,seeds,amounts,msg.sender);
     }
+
+    function getMockYield(uint game) public {
+        uint[] memory amounts=generateRandomSeedArray(user,msg.sender);
+        uint[] memory types=new uint[](10);
+        for(uint i=0;i<types.length;i++){
+            types[i]=i;
+        }
+        mintCropTokens(game,types,amounts,user);
+    }
     function depositToNextGame() external {
+      
        uint game=getNextGame();
+       require(gamePoolDeposits[msg.sender][game]==0,"user has already deposited");
        address gamePool=getLendingPoolAddress(game);
        if(gamePool==address(0)){
            gamePool = initializeNextGame();
        }
        IERC20(DAI).transferFrom(msg.sender,gamePool,defaultDeposit);
        Pool(gamePool).deposit(defaultDeposit,msg.sender);
+      
        gamePoolDeposits[msg.sender][game]=defaultDeposit;
        gamePoolPoints[msg.sender][game]=PointWeight;
        gameOwnedPlots[msg.sender][game]=Pool(gamePool).totalDeposits();
     }
     function confirmRandom() public{
-        require(msg.sender==VRFrandom);
+        require(msg.sender==random);
         uint game=first_game+(((now-first_game)/gameinterval)-1)*gameinterval;
         yieldRandomSet[game]=true;
     }
@@ -112,13 +130,13 @@ contract Game is PoolHandler,Board,Ownable,ERC1155Receiver{
          
          uint earnings=0;
          for(uint i=0;i<Crops.length;i++){
-             earnings +=getYield(Crops[i],Pool(tokenHolder).interest(),interestAllocations,totalTokens,balances[i]);
+             earnings +=getYield(Crops[i],Pool(tokenHolder).interest(),interestAllocations,totalTokens,balances[i],game);
          }
         Pool(tokenHolder).transferInterestToUser(msg.sender,earnings);
     }
-    function getYield(uint crop,uint interest,uint[] memory interestAllocations,uint[] memory totalTokens,uint userBalance) public view returns (uint){
+    function getYield(uint crop,uint interest,uint[] memory interestAllocations,uint[] memory totalTokens,uint userBalance,uint game) public view returns (uint){
         uint location=crop%100000;
-        return((interest*userBalance*10**16)/(numeratorFromTokenPercent(interestAllocations[location])*totalTokens[location]));
+        return((interest*userBalance*10**16)/(numeratorFromTokenPercent(interestAllocations[location])*cropsMinted[game][location]));
     }
     function initializeNextGame() public returns(address) {
         uint next=getNextGame();
@@ -127,5 +145,14 @@ contract Game is PoolHandler,Board,Ownable,ERC1155Receiver{
     }
     function numeratorFromTokenPercent(uint percent) public view returns(uint){
         return tokenDecimals/percent;
+    }
+    function generateRandomSeedArray(address user, uint  game) public view returns(uint[] memory ){
+        uint random=VRFrandom(random).getLatestRandom();
+        uint[] memory _tokens= new uint[](10);
+        random=random*uint(user)*game;
+        for(uint i=0;i<10;i++){
+            _tokens[i]=(random**(10+i))%50;
+        }
+        return _tokens;
     }
 }
