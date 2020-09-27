@@ -1,0 +1,48 @@
+{
+  "contractName": "ChainlinkClient",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ChainlinkCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ChainlinkFulfilled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ChainlinkRequested",
+      "type": "event"
+    }
+  ],
+  "bytecode": "0x60806040526001600455348015601457600080fd5b50603f8060226000396000f3fe6080604052600080fdfea2646970667358221220bd34433fe3245635fce8d01b4640212dcfcf128672d5a9db4f1d04b5da78f9eb64736f6c634300060c0033",
+  "deployedBytecode": "0x6080604052600080fdfea2646970667358221220bd34433fe3245635fce8d01b4640212dcfcf128672d5a9db4f1d04b5da78f9eb64736f6c634300060c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

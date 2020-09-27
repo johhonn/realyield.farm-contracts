@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/johhonn/realyield.farm-contracts#readme",
   "dependencies": {
+    "@chainlink/contracts": "0.0.10",
     "@openzeppelin/contracts": "^3.2.0",
     "multi-token-standard": "^0.9.6"
   }

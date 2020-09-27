@@ -85,12 +85,12 @@ contract Game is PoolHandler,Board,Ownable,ERC1155Receiver{
     }
 
     function getMockYield(uint game) public {
-        uint[] memory amounts=generateRandomSeedArray(user,msg.sender);
+        uint[] memory amounts=generateRandomSeedArray(msg.sender,game);
         uint[] memory types=new uint[](10);
         for(uint i=0;i<types.length;i++){
             types[i]=i;
         }
-        mintCropTokens(game,types,amounts,user);
+        mintCropTokens(game,types,amounts,msg.sender);
     }
     function depositToNextGame() external {
       
