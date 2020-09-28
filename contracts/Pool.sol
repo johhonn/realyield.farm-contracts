@@ -4,15 +4,16 @@ import "./Interfaces/ILendingPoolAddressesProvider.sol";
 import "./Interfaces/ILendingPool.sol";
 import "./Interfaces/IERC20.sol";
 contract Pool {
-    uint depositAmount;
-    uint lockstart;
-    uint lockduration;
+    uint public depositAmount;
+    uint public lockstart;
+    uint public lockduration;
     uint public interest;
-    address creator;
-    address atoken;
+    address public creator;
+    address atoken=address(0xD483B49F2d55D2c53D32bE6efF735cB001880F79);
     uint public totalDeposits;
     bool finished=false;
-    address daiAddress=address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8);
+    //kovan dai
+    address daiAddress=address(0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD);
     
     constructor(uint _deposit,uint _lockstart,uint _lockduration) public{
         depositAmount=_deposit;
@@ -20,13 +21,13 @@ contract Pool {
         lockduration=_lockduration;
         creator=msg.sender;
     }
-    function deposit(uint256 amount, bytes calldata data,address user) public {
+    function deposit(uint256 amount, address user) public {
         require(now<lockstart);
-        ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(address(0x24a42fD28C976A61Df5D00D0599C34c4f90748c8)); // mainnet address, for other addresses: https://docs.aave.com/developers/developing-on-aave/deployed-contract-instances
+        ILendingPoolAddressesProvider provider = ILendingPoolAddressesProvider(address(0x506B0B2CF20FAA8f38a4E2B524EE43e1f4458Cc5)); //kovan address
         ILendingPool lendingPool = ILendingPool(provider.getLendingPool());
 
         
-        address daiAddress = address(0x6B175474E89094C44Da98b954EedeAC495271d0F); // mainnet DAI
+       
         
         uint16 referral = 0;
 
@@ -34,7 +35,7 @@ contract Pool {
         IERC20(daiAddress).approve(provider.getLendingPoolCore(), depositAmount);
 
     
-        lendingPool.deposit(depositAmount, amount, referral);
+        lendingPool.deposit(daiAddress, amount, referral);
         totalDeposits+=depositAmount;
     }
 
@@ -42,23 +43,29 @@ contract Pool {
    
      
      function withdrawDeposits(uint256 amount, bytes calldata data) public{
-         require(now>lockstart+lockduration,"");
+         require(now>lockstart+lockduration,"tokens are still locked");
          finished=true;
          interest=AToken(atoken).balanceOf(address(this))-totalDeposits;
          AToken(atoken).redeem(amount);
      }
+      function withdrawAll() public{
+         require(now>lockstart+lockduration,"tokens are still locked");
+         finished=true;
+         interest=AToken(atoken).balanceOf(address(this))-totalDeposits;
+         AToken(atoken).redeem(totalDeposits);
+     }
     function transferDepositToUser(address user) public{
-         require(msg.sender==creator,"");
-         require(now>lockstart+lockduration,"");
-         require(finished==true,"");
+         require(msg.sender==creator,"sender must the game contract");
+         require(now>lockstart+lockduration,"tokens are still locked");
+         require(finished==true,"Pool has not been redeemed");
          //require(deposited[msg.sender]==true);
          IERC20(daiAddress).transfer(user,depositAmount);
          
     }
     function transferInterestToUser(address user,uint amount) public{
-         require(msg.sender==creator,"");
-         require(now>lockstart+lockduration,"");
-         require(finished==true,"");
+         require(msg.sender==creator,"sender must the game contract");
+         require(now>lockstart+lockduration,"tokens are still locked");
+         require(finished==true,"Pool has not been redeemed");
          IERC20(daiAddress).transfer(user,amount);
     }
 }

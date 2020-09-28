@@ -1,7 +1,7 @@
 // File: @openzeppelin\contracts-ethereum-package\contracts\Initializable.sol
 pragma solidity ^0.6.12;
 import './Interfaces/IERC20.sol';
-import './libraries/SafeMath.sol';
+import './libraries/safeMath.sol';
 import './Pool.sol';
 
 
@@ -12,7 +12,7 @@ import './Pool.sol';
 
 contract PoolHandler {
     
-    using SafeMath for uint256;
+    using safeMath for uint256;
 	
 	mapping(uint=>pool) stakingPools;
     
