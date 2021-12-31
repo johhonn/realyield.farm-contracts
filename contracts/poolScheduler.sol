@@ -10,10 +10,6 @@ contract reocurringRandom is ChainlinkClient, Ownable {
     uint256 public lotteryId;
     address public POOL;
     uint256 public interval;
-    
-   
-    
-    // 0.1 LINK
     uint256 public ORACLE_PAYMENT = 100000000000000000;
     // Alarm stuff
     address CHAINLINK_ALARM_ORACLE = 0xc99B3D447826532722E41bc36e644ba3479E4365;
